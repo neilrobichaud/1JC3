@@ -5,34 +5,27 @@ import Color exposing (..)
 import Keyboard exposing (..)
 import Bitwise
 
-
 import Text as Text
 import List as List
 import Signal as Signal
 import Array exposing (Array)
-
 
 {- ----------------------------------------------------------------------------------------
  - CPU Visulatiozation Code
  - ----------------------------------------------------------------------------------------
  -}
 
-
 boxSize     = 80
 diagramSize = 1000
 
 
-
-
 -- register values diagram
-
 
 registerDiagram : CPUState -> Element
 registerDiagram (CPUState regs _ _ _) 
   = let
       (r1,r2,r3,r4,r5,r6,r7,r8) = regs
       regs'      = [r1,r2,r3,r4,r5,r6,r7,r8]
-
 
       regBox : RegisterValue -> Int -> Element
       regBox r n = color blue 
@@ -42,51 +35,24 @@ registerDiagram (CPUState regs _ _ _)
           <| flow right 
           <| List.map2 regBox regs' [1..8]
 
-
-
-
 -- show current instruction in diagram
-
 
 instrDiagram : CPUState -> Element
 instrDiagram (CPUState regs i com halted) =
   case fetchInstruction (CPUState regs i com halted) program of
-      Just instr -> --container diagramSize diagramSize midBottom <| show (i,instr),
-                    collage 200 180 [ filled purple (oval 100 30) |> scale 2 , (toForm (show (i,instr)))
-                    -- 
-                    ]
+      Just instr -> container diagramSize diagramSize midBottom <| show (i,instr)
       Nothing    -> container diagramSize diagramSize midBottom <| show (i,IllegalAddress)
 
 
-memoryDiagram (CPUState regs _ _ _) 
-  = let
-      (r1,r2,r3,r4,r5,r6,r7,r8) = regs
-      regs'      = [r1,r2,r3,r4,r5,r6,r7,r8]
-      memBox : RegisterValue -> Int -> Element
-      memBox r n = color red 
-                      <| container boxSize boxSize middle                    
-                      <| flow down [show r,centered (Text.fromString <| "Mem" ++ toString n)]
-                      
-    in container diagramSize diagramSize midTop 
-          <| flow right 
-          <| List.map2 memBox regs' [1]
-
-
--- show current instruction in diagram
 -- diagram for visualizing current CPU state
 
-
 cpuDiagram : (CPUState,Data) -> Element
-cpuDiagram (cpuState,dat) = layers [instrDiagram cpuState, registerDiagram cpuState, memoryDiagram cpuState]
-
-
-
+cpuDiagram (cpuState,dat) = layers [instrDiagram cpuState, registerDiagram cpuState]
 
 
 
 -- update function, execute one instruction on signal update 
 -- and return new cpu state
-
 
 updateCPU : Bool -> (CPUState,Data) -> (CPUState,Data)
 updateCPU update (cpuState,dat) = 
@@ -96,30 +62,23 @@ updateCPU update (cpuState,dat) =
          ( _    , Just instr ) -> executeOne instr (cpuState,dat) 
 
 
-
-
 -- render CPU Diagram to the screen using the `enter` keyboard signal
 -- to increment through the program
-
 
 renderCPUDiagram : Signal Element 
 renderCPUDiagram = Signal.map cpuDiagram 
                 <| Signal.foldp updateCPU (initialState,initialData) (Keyboard.enter)
 
-
 main : Signal Element
 main = renderCPUDiagram
-
 
 {- ----------------------------------------------------------------------------------------
  - Example Program
  - ----------------------------------------------------------------------------------------
  -}
 
-
 program : Program
 program = mkProgram code
-
 
 code : List Instruction
 code = 
@@ -137,7 +96,6 @@ code =
   ]
  
 
-
 {- ----------------------------------------------------------------------------------------
  - CPU Model 
  - ----------------------------------------------------------------------------------------
@@ -145,7 +103,6 @@ code =
  
 -- the transitions for the CPUState are all instructions
 -- "the CPU is a good listener"
-
 
 type Instruction  = Load           RegisterNumber           -- put value here
                                    RegisterNumber           -- from address which is sum of this register value
@@ -162,48 +119,37 @@ type Instruction  = Load           RegisterNumber           -- put value here
                                    RegisterNumber           -- first thing to add
                                    RegisterNumber           -- second thing to add
 
-
                   | Multiply       RegisterNumber           -- put result here
                                    RegisterNumber           -- first thing to multiply
                                    RegisterNumber           -- second thing to multiply
-
 
                   | And            RegisterNumber           -- put result here
                                    RegisterNumber           -- first thing to and
                                    RegisterNumber           -- second thing to and
 
-
                   | Or             RegisterNumber           -- put result here
                                    RegisterNumber           -- first thing to or
                                    RegisterNumber           -- second thing to or
 
-
                   | Not            RegisterNumber           -- put result here
                                    RegisterNumber           -- reverse bits from here
-
 
                   | Rotate         RegisterNumber           -- put result here
                                    RegisterNumber           -- value to rotate
                                    Int                      -- rotate bits (left is positive)
 
-
                   | Compare        RegisterNumber           -- compare the value in this register
                                    RegisterNumber           -- to the value in this register (result goes in CPU State)
-
 
                   | Branch         (List ComparisonResult)  -- results (maybe all) which will cause branch
                                    RegisterNumber           -- instruction to branch to if true
 
-
                   | Halt
-
 
 type alias Program = Int -> Maybe Instruction
 
-
 type alias Data = Array Int
 type alias Code = List Instruction
-
 
 mkProgram : List Instruction -> Program
 mkProgram instrs = let code = Array.fromList instrs
@@ -212,8 +158,6 @@ mkProgram instrs = let code = Array.fromList instrs
 type alias RegisterNumber   = Int
 type alias RegisterValue    = Int
 type alias ComparisonResult = Order
-
-
 
 
 {- ----------------------------------------------------------------------------------------
@@ -230,14 +174,10 @@ dataSize = 1024
 initialData  : Array Int
 initialData  = Array.initialize 1024 identity
 
-
 initialTinyData = Array.initialize 4 identity
-
 
 fetchInstruction : CPUState -> Program -> Maybe Instruction
 fetchInstruction (CPUState _ curInstr _ _) prog = prog curInstr
-
-
 
 
 -- executeOne gives a semantics for the CPU instruction language
@@ -254,7 +194,6 @@ executeOne instr (cpuState,dat) =
                                in
                                  nextInstruction (newCpuState, dat)
 
-
     Store regNum addr1 addr2 -> nextInstruction <|
                                     case (getRegisterVal addr1  cpuState
                                          ,getRegisterVal addr2  cpuState
@@ -264,16 +203,13 @@ executeOne instr (cpuState,dat) =
                                                                             else (illegalAddress cpuState, dat)
                                       otherwise -> (illegalRegister cpuState,dat)
 
-
     LoadImmediate target value -> nextInstruction
                                     (changeRegister target value cpuState, dat)
-
 
     Add target arg1 arg2 -> twoArgOp (cpuState,dat) target arg1 arg2 (+)
     Multiply target arg1 arg2 -> twoArgOp (cpuState,dat) target arg1 arg2 (*)
     And target arg1 arg2 -> twoArgOp (cpuState,dat) target arg1 arg2 Bitwise.and
     Or target arg1 arg2 -> twoArgOp (cpuState,dat) target arg1 arg2 Bitwise.or
-
 
     Not target arg1 -> (case getRegisterVal arg1 cpuState of
                           Just val  -> changeRegister target (Bitwise.complement val) cpuState
@@ -281,13 +217,11 @@ executeOne instr (cpuState,dat) =
                        , dat)
                        |> nextInstruction
 
-
     Rotate target arg1 shift -> (case getRegisterVal arg1 cpuState of
                                    Just val  -> changeRegister target (Bitwise.shiftLeft val (-shift)) cpuState
                                    otherwise -> illegalRegister cpuState
                                 , dat)
                                 |> nextInstruction
-
 
     Compare arg1 arg2 -> (case (getRegisterVal arg1 cpuState
                                ,getRegisterVal arg2 cpuState) of
@@ -296,7 +230,6 @@ executeOne instr (cpuState,dat) =
                             otherwise       -> illegalRegister cpuState
                          ,dat)
                          |> nextInstruction
-
 
     Branch branchOn targetAddress ->
       let (CPUState regs inst result halted) = cpuState
@@ -312,7 +245,6 @@ executeOne instr (cpuState,dat) =
       let (CPUState regs inst result halted) = cpuState
       in  (CPUState regs inst result (Just ReachedHalt),dat)
 
-
 twoArgOp (cpuState,dat) target arg1 arg2 op = (case (getRegisterVal arg1 cpuState
                                                     ,getRegisterVal arg2 cpuState) of
                                                  (Just x,Just y) -> changeRegister  target (x `op` y) cpuState
@@ -321,19 +253,14 @@ twoArgOp (cpuState,dat) target arg1 arg2 op = (case (getRegisterVal arg1 cpuStat
                                               |> nextInstruction
 
 
-
-
 illegalAddress (CPUState regs currInstr comparedAs _)
               = CPUState regs currInstr comparedAs (Just IllegalAddress)
-
 
 illegalInstrAddress (CPUState regs currInstr comparedAs _)
                    = CPUState regs currInstr comparedAs (Just IllegalInstrAddress)
 
-
 illegalRegister (CPUState regs currInstr comparedAs _)
                = CPUState regs currInstr comparedAs (Just IllegalRegisterNum)
-
 
 changeRegister  regNum
                 newValue
@@ -362,7 +289,6 @@ changeRegister  regNum
       _ -> CPUState (reg1,reg2,reg3,reg4,reg5,reg6,reg7,reg8)
                     currentInstruction comparedAs (Just IllegalRegisterNum)
 
-
 getRegisterVal  regNum
                 (CPUState  (reg1,reg2,reg3,reg4,reg5,reg6,reg7,reg8)
                            currentInstruction
@@ -382,8 +308,6 @@ getRegisterVal  regNum
       _ -> Nothing
 
 
-
-
 nextInstruction  (CPUState  (reg1,reg2,reg3,reg4,reg5,reg6,reg7,reg8)
                             currentInstruction
                             comparedAs
@@ -398,10 +322,8 @@ nextInstruction  (CPUState  (reg1,reg2,reg3,reg4,reg5,reg6,reg7,reg8)
               maybeHalted
     ,dat)
 
-
 runProgram : Program -> (CPUState,Data) -> (CPUState,Data)
 runProgram prog init = runProgram' prog init
-
 
 runProgram' : Program -> (CPUState,Data) -> (CPUState,Data)
 runProgram' prog (CPUState regs inst result halted,dat)
@@ -411,22 +333,18 @@ runProgram' prog (CPUState regs inst result halted,dat)
                      Nothing -> ((CPUState regs inst result (Just IllegalInstrAddress)),dat)
       otherwise -> ((CPUState regs inst result halted),dat)
 
-
 type alias CurrentInstruction = Int
-
 
 type HaltedBecause  = ReachedHalt
                     | IllegalRegisterNum
                     | IllegalAddress
                     | IllegalInstrAddress
 
-
 type CPUState = CPUState  (RegisterValue, RegisterValue, RegisterValue, RegisterValue,
                            RegisterValue, RegisterValue, RegisterValue, RegisterValue)
                           CurrentInstruction
                           ComparisonResult
                           (Maybe HaltedBecause)
-
 
 -- registers are like the working memory in our brains
 --   to be useful, we need these numbers fast
@@ -436,3 +354,4 @@ type CPUState = CPUState  (RegisterValue, RegisterValue, RegisterValue, Register
 --   (there is an intermediate middle-sized memory called cache)
 -- think of main memory as book, with lines and pages
 --   number of these boxes is called a memory address
+ 
